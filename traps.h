@@ -1,5 +1,5 @@
 // x86 trap and interrupt constants.
-
+//traps uwu
 // Processor-defined:
 #define T_DIVIDE         0      // divide error
 #define T_DEBUG          1      // debug exception
