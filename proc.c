@@ -6,15 +6,15 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
-void printQueue(proc p, char* queue){ // Print the process name, ID, and what queue it ran in
+//acceptting struct proc point p and the queue value - Ben Richards
+void printQueue(struct proc *p, char* queue){ // Print the process name, ID, and what queue it ran in
   char *text1, *text2; 
   text1 = "Process";
   text2 = "has consumed 10 ms in";
 
   cprintf( "%s %s %d %s %s\n", text1, p->name, p->pid, text2, queue );
-
-  return;
+  //void functions don't return anything. 
+  //return;
 }
 
 struct {
@@ -42,6 +42,7 @@ pinit(void)
 // state required to run in the kernel.
 // Otherwise return 0.
 static struct proc*
+
 allocproc(void)
 {
   struct proc *p;
@@ -299,8 +300,8 @@ scheduler(void)
       p->state = RUNNING;
   
       swtch(&cpu->scheduler, proc->context);
-      printQueue(p, "FQ");
-      p->usedFQ = 1;  // Indicate that the process has used its time in the FQ
+      /*new*/printQueue(p, "FQ");
+      /*new*/p->usedFQ = 1;  // Indicate that the process has used its time in the FQ
       switchkvm();
 
       // Process is done running for now.
