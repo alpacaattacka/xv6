@@ -57,10 +57,8 @@ allocproc(void)
 
 found:
   p->state = EMBRYO;
-  p->queuetype = 0; // Additions requested by 2.2 - Initializing
-  p->quantumsize = 4;
   p->pid = nextpid++;
-  p->usedFQ = 0;
+  p->usageCounter = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -288,10 +286,10 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){ // Run FQ
-      if(p->usedFQ != 0) continue;  // Skip process if it has already used the FQ
       if(p->state != RUNNABLE)
         continue;
-
+      if(p->usageCounter != 0) continue;  // Skip process if it has already used the FQ
+      strncpy(p->nameCopy, p->name, 16);
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -300,8 +298,8 @@ scheduler(void)
       p->state = RUNNING;
   
       swtch(&cpu->scheduler, proc->context);
-      /*new*/printQueue(p, "FQ");
-      /*new*/p->usedFQ = 1;  // Indicate that the process has used its time in the FQ
+      printQueue(p, "FQ");
+      p->usageCounter++;  // Indicate that the process has used one 10ms interval
       switchkvm();
 
       // Process is done running for now.
@@ -310,29 +308,25 @@ scheduler(void)
     }
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){ // Run AQ
-      if(p->usedFQ == 0) continue;  // Skip process if it hasn't used the FQ
       if(p->state != RUNNABLE)
         continue;
-
+      if(p->usageCounter == 0) continue;  // Skip process if it hasn't used the FQ
+      
+      p->usageCounter++;
+      if(strncmp(p->name, p->nameCopy, 16) != 0){ // Check if OS renamed an old process instead of allocating a new one
+        p->usageCounter = 0;
+        strncpy(p->nameCopy, p->name, 16);
+      }
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
 
-      for(int i = 0; i < 3; i++){
-        proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-        swtch(&cpu->scheduler, proc->context);
-        printQueue(p, "AQ");
-        switchkvm();
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        proc = 0;
+      while(p->usageCounter % 4 != 0){ // Move to next process after current one has used 30ms
         for(q = ptable.proc; q < &ptable.proc[NPROC]; q++){ // Check FQ for added processes
-          if(q->usedFQ != 0) continue;  // Skip process if it has already used the FQ
           if(q->state != RUNNABLE)
            continue;
-
+          if(q->usageCounter != 0) continue;  // Skip process if it has already used the FQ
+           strncpy(q->nameCopy, q->name, 16);
           // Switch to chosen process.  It is the process's job
           // to release ptable.lock and then reacquire it
           // before jumping back to us.
@@ -342,17 +336,23 @@ scheduler(void)
   
           swtch(&cpu->scheduler, proc->context);
           printQueue(q, "FQ");
-          q->usedFQ = 1;  // Indicate that the process has used its time in the FQ
+          q->usageCounter++;  // Indicate that the process has used its time in the FQ
           switchkvm();
 
           // Process is done running for now.
           // It should have changed its p->state before coming back.
           proc = 0;
-        }
-        if(i == 1 && p->usedFQ == 1){ // If the process just came from the FQ, only run twice (10ms + 20ms)
-          p->usedFQ = 2;
-          continue;
-        };
+        } 
+        proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        swtch(&cpu->scheduler, proc->context);
+        printQueue(p, "AQ");
+        p->usageCounter++;
+        switchkvm();
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        proc = 0;
       };
       
     }

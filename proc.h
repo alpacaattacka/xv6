@@ -66,9 +66,8 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int queuetype;
-  int quantumsize;
-  int usedFQ;                  // Flag used to determine if the process has been through the FQ
+  char nameCopy[16];           // A copy of the process name to check if the OS swapped it to make a "new" process
+  int usageCounter;            // Used to show how many 10ms intervals the process has used
 };
 
 // Process memory is laid out contiguously, low addresses first:
