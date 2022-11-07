@@ -289,14 +289,14 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
       if(p->usageCounter != 0) continue;  // Skip process if it has already used the FQ
-      strncpy(p->nameCopy, p->name, 16);
+      strncpy(p->nameCopy, p->name, 16);  // Make a copy of the process's current name
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
-  
+
       swtch(&cpu->scheduler, proc->context);
       printQueue(p, "FQ");
       p->usageCounter++;  // Indicate that the process has used one 10ms interval
@@ -312,7 +312,7 @@ scheduler(void)
         continue;
       if(p->usageCounter == 0) continue;  // Skip process if it hasn't used the FQ
       
-      p->usageCounter++;
+      p->usageCounter++;  // Add 1 to counter to keep processes from being locked out of the AQ
       if(strncmp(p->name, p->nameCopy, 16) != 0){ // Check if OS renamed an old process instead of allocating a new one
         p->usageCounter = 0;
         strncpy(p->nameCopy, p->name, 16);
@@ -326,14 +326,14 @@ scheduler(void)
           if(q->state != RUNNABLE)
            continue;
           if(q->usageCounter != 0) continue;  // Skip process if it has already used the FQ
-           strncpy(q->nameCopy, q->name, 16);
+           strncpy(q->nameCopy, q->name, 16); // Make a copy of the process's current name
           // Switch to chosen process.  It is the process's job
           // to release ptable.lock and then reacquire it
           // before jumping back to us.
           proc = q;
           switchuvm(q);
           q->state = RUNNING;
-  
+          
           swtch(&cpu->scheduler, proc->context);
           printQueue(q, "FQ");
           q->usageCounter++;  // Indicate that the process has used its time in the FQ
